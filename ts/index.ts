@@ -48,15 +48,30 @@ export type THookEventWheel = THookEventCommon & {
 export type THookEvent = THookEventKeyboard | THookEventMouse | THookEventWheel;
 
 type TPossibleSubscriptions = {
-	addListener(eventName: TEventNameKeyboard, listener: (event: THookEventKeyboard) => void): EventEmitter;
-	addListener(eventName: TEventNameMouse, listener: (event: THookEventMouse) => void): EventEmitter;
-	addListener(eventName: TEventNameWheel, listener: (event: THookEventWheel) => void): EventEmitter;
-	on(eventName: TEventNameKeyboard, listener: (event: THookEventKeyboard) => void): EventEmitter;
-	on(eventName: TEventNameMouse, listener: (event: THookEventMouse) => void): EventEmitter;
-	on(eventName: TEventNameWheel, listener: (event: THookEventWheel) => void): EventEmitter;
-	once(eventName: TEventNameKeyboard, listener: (event: THookEventKeyboard) => void): EventEmitter;
-	once(eventName: TEventNameMouse, listener: (event: THookEventMouse) => void): EventEmitter;
-	once(eventName: TEventNameWheel, listener: (event: THookEventWheel) => void): EventEmitter;
+	addListener: {
+		(
+			eventName: TEventNameKeyboard,
+			listener: (event: THookEventKeyboard) => void,
+		): EventEmitter;
+		(eventName: TEventNameMouse, listener: (event: THookEventMouse) => void): EventEmitter;
+		(eventName: TEventNameWheel, listener: (event: THookEventWheel) => void): EventEmitter;
+	};
+	on: {
+		(
+			eventName: TEventNameKeyboard,
+			listener: (event: THookEventKeyboard) => void,
+		): EventEmitter;
+		(eventName: TEventNameMouse, listener: (event: THookEventMouse) => void): EventEmitter;
+		(eventName: TEventNameWheel, listener: (event: THookEventWheel) => void): EventEmitter;
+	};
+	once: {
+		(
+			eventName: TEventNameKeyboard,
+			listener: (event: THookEventKeyboard) => void,
+		): EventEmitter;
+		(eventName: TEventNameMouse, listener: (event: THookEventMouse) => void): EventEmitter;
+		(eventName: TEventNameWheel, listener: (event: THookEventWheel) => void): EventEmitter;
+	};
 };
 
 type TIoHookControls = {
@@ -65,19 +80,19 @@ type TIoHookControls = {
 	 *
 	 * If `enableLogger` is true, the native module prints debug information to stdout.
 	 */
-	start(enableLogger?: boolean): void;
+	start: (enableLogger?: boolean) => void;
 	/**
 	 * Stop emitting keyboard and mouse events.
 	 */
-	stop(): void;
+	stop: () => void;
 	/**
 	 * Enable or disable native debug output.
 	 */
-	setDebug(mode: boolean): void;
+	setDebug: (mode: boolean) => void;
 	/**
 	 * Use `rawcode` instead of `keycode` when tracking shortcuts.
 	 */
-	useRawcode(using: boolean): void;
+	useRawcode: (using: boolean) => void;
 	/**
 	 * Register a global shortcut.
 	 *
@@ -86,22 +101,24 @@ type TIoHookControls = {
 	 *
 	 * @returns Function that removes this specific shortcut.
 	 */
-	shortcut(
+	shortcut: (
 		keys: readonly number[],
 		onDown: (keys: number[]) => void,
 		onUp?: (keys: number[]) => void,
-	): () => void;
+	) => () => void;
 	/**
 	 * Unregister a shortcut by its key codes.
 	 */
-	removeShortcut(keys: readonly number[]): void;
+	removeShortcut: (keys: readonly number[]) => void;
 	/**
 	 * Unregister all shortcuts.
 	 */
-	clearShortcuts(): void;
+	clearShortcuts: () => void;
 };
 
-export type IoHook = Omit<EventEmitter, 'addListener' | 'on' | 'once'> & TPossibleSubscriptions & TIoHookControls;
+export type IoHook = Omit<EventEmitter, 'addListener' | 'on' | 'once'> &
+	TPossibleSubscriptions &
+	TIoHookControls;
 
 type TKeyboardEventProperty = 'keycode' | 'rawcode';
 
@@ -146,9 +163,8 @@ const state: TState = {
 	shortcuts: [],
 };
 
-const isKeyboardEvent = (event: THookEvent): event is THookEventKeyboard => (
-	event.type === 'keypress' || event.type === 'keydown' || event.type === 'keyup'
-);
+const isKeyboardEvent = (event: THookEvent): event is THookEventKeyboard =>
+	event.type === 'keypress' || event.type === 'keydown' || event.type === 'keyup';
 
 const applyModifierState = (
 	event: THookEvent,
@@ -158,41 +174,40 @@ const applyModifierState = (
 	if (event.type === 'keyup' && event[property]) {
 		state[stateProperty] = false;
 	}
-	
+
 	if (event.type === 'keydown' && event[property]) {
 		state[stateProperty] = true;
 	}
-	
+
 	if (state[stateProperty]) {
 		event[property] = true;
 	}
 };
 
-const getShortcutSignature = (keys: Iterable<number>) => (
-	[...keys].toSorted((left, right) => left - right).join('+')
-);
+const getShortcutSignature = (keys: Iterable<number>) =>
+	[...keys].toSorted((left, right) => left - right).join('+');
 
 const getShortcutKeys = (shortcut: TShortcut) => [...shortcut.keys.keys()];
 
 const handleShortcutKeydown = (event: THookEventKeyboard) => {
 	const eventKey = event[state.eventProperty];
-	
+
 	for (const shortcut of state.shortcuts) {
 		if (!shortcut.keys.has(eventKey)) {
 			continue;
 		}
-		
+
 		shortcut.keys.set(eventKey, true);
-		
+
 		const keys = getShortcutKeys(shortcut);
 		const isTriggered = [...shortcut.keys.values()].every(Boolean);
-		
+
 		if (!isTriggered) {
 			continue;
 		}
-		
+
 		shortcut.onDown(keys);
-		
+
 		if (!state.activatedShortcuts.includes(shortcut)) {
 			state.activatedShortcuts.push(shortcut);
 		}
@@ -201,26 +216,28 @@ const handleShortcutKeydown = (event: THookEventKeyboard) => {
 
 const handleShortcutKeyup = (event: THookEventKeyboard) => {
 	const eventKey = event[state.eventProperty];
-	
+
 	for (const shortcut of state.shortcuts) {
 		if (shortcut.keys.has(eventKey)) {
 			shortcut.keys.set(eventKey, false);
 		}
 	}
-	
+
 	for (const shortcut of state.activatedShortcuts) {
 		if (!shortcut.keys.has(eventKey)) {
 			continue;
 		}
-		
+
 		const isReleased = [...shortcut.keys.values()].every((isPressed) => !isPressed);
-		
+
 		if (!isReleased) {
 			continue;
 		}
-		
+
 		shortcut.onUp?.(getShortcutKeys(shortcut));
-		state.activatedShortcuts = state.activatedShortcuts.filter((activeShortcut) => activeShortcut !== shortcut);
+		state.activatedShortcuts = state.activatedShortcuts.filter(
+			(activeShortcut) => activeShortcut !== shortcut,
+		);
 	}
 };
 
@@ -228,18 +245,18 @@ const handleShortcut = (event: THookEvent) => {
 	if (!state.active || !isKeyboardEvent(event) || event.type === 'keypress') {
 		return;
 	}
-	
+
 	if (event.type === 'keydown') {
 		handleShortcutKeydown(event);
 		return;
 	}
-	
+
 	handleShortcutKeyup(event);
 };
 
 const createEvent = (message: TNativeHookMessage): THookEvent | null => {
 	const type = eventNames[message.type];
-	
+
 	if (message.keyboard) {
 		return {
 			...message.keyboard,
@@ -248,7 +265,7 @@ const createEvent = (message: TNativeHookMessage): THookEvent | null => {
 			type: type as TEventNameKeyboard,
 		};
 	}
-	
+
 	if (message.mouse) {
 		return {
 			...message.mouse,
@@ -257,7 +274,7 @@ const createEvent = (message: TNativeHookMessage): THookEvent | null => {
 			type: type as TEventNameMouse,
 		};
 	}
-	
+
 	if (message.wheel) {
 		return {
 			amount: message.wheel.amount,
@@ -271,7 +288,7 @@ const createEvent = (message: TNativeHookMessage): THookEvent | null => {
 			y: message.wheel.y,
 		};
 	}
-	
+
 	return null;
 };
 
@@ -280,23 +297,23 @@ class IoHookController extends EventEmitter {
 		if (state.active) {
 			return;
 		}
-		
+
 		state.active = true;
 		native.startHook((message) => {
 			this.handleMessage(message);
 		});
 		this.setDebug(enableLogger);
 	}
-	
+
 	public stop(): void {
 		if (!state.active) {
 			return;
 		}
-		
+
 		state.active = false;
 		native.stopHook();
 	}
-	
+
 	public shortcut(
 		keys: readonly number[],
 		onDown: (keys: number[]) => void,
@@ -309,55 +326,57 @@ class IoHookController extends EventEmitter {
 			onDown,
 			onUp,
 		};
-		
+
 		state.shortcuts.push(shortcut);
-		
+
 		return () => {
 			state.shortcuts = state.shortcuts.filter(({ id }) => id !== shortcutId);
-			state.activatedShortcuts = state.activatedShortcuts.filter(({ id }) => id !== shortcutId);
+			state.activatedShortcuts = state.activatedShortcuts.filter(
+				({ id }) => id !== shortcutId,
+			);
 		};
 	}
-	
+
 	public removeShortcut(keys: readonly number[]): void {
 		const searchKeys = getShortcutSignature(keys);
-		
-		state.shortcuts = state.shortcuts.filter((shortcut) => (
-			getShortcutSignature(shortcut.keys.keys()) !== searchKeys
-		));
-		state.activatedShortcuts = state.activatedShortcuts.filter((shortcut) => (
-			getShortcutSignature(shortcut.keys.keys()) !== searchKeys
-		));
+
+		state.shortcuts = state.shortcuts.filter(
+			(shortcut) => getShortcutSignature(shortcut.keys.keys()) !== searchKeys,
+		);
+		state.activatedShortcuts = state.activatedShortcuts.filter(
+			(shortcut) => getShortcutSignature(shortcut.keys.keys()) !== searchKeys,
+		);
 	}
-	
+
 	public clearShortcuts(): void {
 		state.shortcuts = [];
 		state.activatedShortcuts = [];
 	}
-	
+
 	public setDebug(mode: boolean): void {
 		native.setDebug(mode);
 	}
-	
+
 	public useRawcode(using: boolean): void {
 		state.eventProperty = using ? 'rawcode' : 'keycode';
 	}
-	
+
 	private handleMessage(message: TNativeHookMessage): void {
 		if (!state.active) {
 			return;
 		}
-		
+
 		const event = createEvent(message);
-		
+
 		if (!event) {
 			return;
 		}
-		
+
 		applyModifierState(event, 'shiftKey', 'lastKeydownShift');
 		applyModifierState(event, 'altKey', 'lastKeydownAlt');
 		applyModifierState(event, 'ctrlKey', 'lastKeydownCtrl');
 		applyModifierState(event, 'metaKey', 'lastKeydownMeta');
-		
+
 		this.emit(event.type, event);
 		handleShortcut(event);
 	}

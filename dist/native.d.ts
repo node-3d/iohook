@@ -11,7 +11,7 @@ export declare const NativeEventType: {
     readonly MouseDragged: 10;
     readonly MouseWheel: number;
 };
-export type TNativeEventType = (typeof NativeEventType)[keyof typeof NativeEventType];
+export type TNativeEventType = typeof NativeEventType[keyof typeof NativeEventType];
 export type TNativeKeyboardEvent = {
     altKey: boolean;
     ctrlKey: boolean;

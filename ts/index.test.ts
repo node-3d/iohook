@@ -16,7 +16,7 @@ describe('iohook', () => {
 	after(() => {
 		iohook.stop();
 	});
-	
+
 	for (const name of methods) {
 		it(`exports method #${name}`, () => {
 			assert.equal(typeof iohook[name], 'function');

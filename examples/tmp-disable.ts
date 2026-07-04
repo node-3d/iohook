@@ -1,6 +1,5 @@
 import { iohook } from '@node-3d/iohook';
 
-
 iohook.on('mousedown', (msg) => {
 	console.log(msg);
 });
@@ -47,15 +46,14 @@ iohook.start();
 
 console.log('Hook started. Try input. CTRL+F7 shortcut.');
 
-
 setTimeout(() => {
 	iohook.stop();
 	console.log('Hook stopped for 3 sec.');
-	
+
 	setTimeout(() => {
 		iohook.start();
 		console.log('Hook RESTARTED.');
-		
+
 		setTimeout(() => {
 			console.log('Hook stopped.');
 			iohook.stop();
