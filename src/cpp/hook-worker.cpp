@@ -12,7 +12,7 @@ bool logger_proc(unsigned int level, const char *format, ...) {
 	if (!isDebug) {
 		return false;
 	}
-	
+
 	bool status = false;
 	va_list args;
 	switch (level) {
@@ -22,7 +22,7 @@ bool logger_proc(unsigned int level, const char *format, ...) {
 			status = vfprintf(stdout, format, args) >= 0;
 			va_end(args);
 			break;
-			
+
 		case LOG_LEVEL_WARN:
 		case LOG_LEVEL_ERROR:
 			va_start(args, format);
@@ -40,7 +40,7 @@ constexpr size_t MAX_STORED_COUNT = 256;
 uiohook_event _storedEvents[MAX_STORED_COUNT];
 size_t _storedCount = 0;
 
-static inline uiohook_event *_keepEvent(const uiohook_event * const event) {
+static inline uiohook_event *_keepEvent(const uiohook_event *const event) {
 	uiohook_event *ptr = &(_storedEvents[_storedCount]);
 	_storedCount = (_storedCount + 1) % MAX_STORED_COUNT;
 	memcpy(ptr, event, sizeof(uiohook_event));
@@ -48,7 +48,7 @@ static inline uiohook_event *_keepEvent(const uiohook_event * const event) {
 }
 
 // Executes on the same thread that hook_run() is called from.
-void dispatch_proc(uiohook_event * const event) {
+void dispatch_proc(uiohook_event *const event) {
 	switch (event->type) {
 		case EVENT_KEY_PRESSED:
 		case EVENT_KEY_RELEASED:
@@ -61,7 +61,8 @@ void dispatch_proc(uiohook_event * const event) {
 		case EVENT_MOUSE_WHEEL:
 			callTsFn(_keepEvent(event));
 			break;
-		default: break;
+		default:
+			break;
 	}
 }
 

@@ -11,7 +11,7 @@ DBG_EXPORT JS_METHOD(startHook);
 DBG_EXPORT JS_METHOD(stopHook);
 DBG_EXPORT JS_METHOD(setDebug);
 
-void callTsFn(void* data);
+void callTsFn(void *data);
 
 } // namespace iohook
 
