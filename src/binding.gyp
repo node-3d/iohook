@@ -42,7 +42,7 @@
 				'xcode_settings': {
 					'DYLIB_INSTALL_NAME_BASE': '@rpath',
 				},
-				'MACOSX_DEPLOYMENT_TARGET': '10.9',
+				'MACOSX_DEPLOYMENT_TARGET': '13.5',
 				'defines': ['__APPLE__', 'USE_IOKIT=1', 'USE_OBJC=1'],
 				'CLANG_CXX_LIBRARY': 'libc++',
 				'OTHER_CFLAGS': ['-std=c++17', '-fno-exceptions'],
