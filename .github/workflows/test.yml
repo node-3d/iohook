@@ -16,7 +16,7 @@ jobs:
     name: Unit Tests
     strategy:
         matrix:
-          os: [ubuntu-22.04, windows-2022, macos-12, macos-14]
+          os: [ubuntu-22.04, windows-2022, macos-26]
 
     runs-on: ${{ matrix.os }}
 
@@ -37,7 +37,7 @@ jobs:
         run: npm ci
 
       - name: Fix Python
-        if: matrix.os == 'macos-12' || matrix.os == 'macos-14'
+        if: matrix.os == 'macos-26'
         run: pip install setuptools
 
       - name: Install dependency - Linux
