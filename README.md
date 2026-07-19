@@ -11,18 +11,7 @@ This is a part of [Node3D](https://github.com/node-3d) project.
 npm install @node-3d/iohook
 ```
 
-## Binary Origin
 
-Release archives are built by this repository's public GitHub Actions workflows.
-
-Attestations: https://github.com/node-3d/iohook/attestations
-
-To verify a downloaded archive:
-
-```bash
-gh release download <tag> -R node-3d/iohook -p <platform>.gz
-gh attestation verify <platform>.gz -R node-3d/iohook
-```
 
 **Node.js** addon providing a hook to track global input and shortcuts.
 This work is derived from [wilix-team/iohook](https://github.com/wilix-team/iohook).
@@ -44,3 +33,16 @@ iohook.start();
 > Note: this **addon uses N-API**, and therefore is ABI-compatible across different
 Node.js versions. Addon binaries are precompiled and **there is no compilation**
 step during the `npm install` command.
+
+## Binary Origin
+
+Release archives are built by this repository's public GitHub Actions workflows.
+
+Attestations: https://github.com/node-3d/iohook/attestations
+
+To verify a downloaded archive:
+
+```bash
+gh release download <tag> -R node-3d/iohook -p <platform>.gz
+gh attestation verify <platform>.gz -R node-3d/iohook
+```
