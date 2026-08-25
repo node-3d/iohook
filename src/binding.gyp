@@ -16,7 +16,7 @@
 			'<(uio_include)',
 			'<!@(node -e "import(\'@node-3d/addon-tools\').then((m) => m.printInclude())")',
 		],
-		'cflags_cc': ['-std=c++17', '-fno-exceptions'],
+		'cflags_cc': ['-std=c++20', '-fno-exceptions'],
 		'cflags': ['-fno-exceptions'],
 		'library_dirs': ['<(uio_bin)'],
 		'conditions': [
@@ -45,7 +45,7 @@
 				'MACOSX_DEPLOYMENT_TARGET': '13.5',
 				'defines': ['__APPLE__', 'USE_IOKIT=1', 'USE_OBJC=1'],
 				'CLANG_CXX_LIBRARY': 'libc++',
-				'OTHER_CFLAGS': ['-std=c++17', '-fno-exceptions'],
+				'OTHER_CFLAGS': ['-std=c++20', '-fno-exceptions'],
 			}],
 			['OS=="win"', {
 				'libraries': [
@@ -55,12 +55,8 @@
 				'msvs_settings' : {
 					'VCCLCompilerTool' : {
 						'AdditionalOptions' : [
-							'/O2','/Oy','/GL','/GF','/Gm-', '/std:c++17',
-							'/EHa-s-c-','/MT','/GS','/Gy','/GR-','/Gd',
+							'/Oy','/GF','/Gm-','/Gy',
 						]
-					},
-					'VCLinkerTool' : {
-						'AdditionalOptions' : ['/DEBUG:NONE', '/LTCG', '/OPT:NOREF'],
 					},
 				},
 			}],

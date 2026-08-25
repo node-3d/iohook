@@ -298,10 +298,10 @@ class IoHookController extends EventEmitter {
 			return;
 		}
 
-		state.active = true;
 		native.startHook((message) => {
 			this.handleMessage(message);
 		});
+		state.active = true;
 		this.setDebug(enableLogger);
 	}
 

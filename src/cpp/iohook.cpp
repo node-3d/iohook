@@ -1,6 +1,9 @@
 #include "iohook.hpp"
 #include "hook-worker.hpp"
 
+#include <atomic>
+#include <memory>
+
 
 /**
  * @see https://github.com/wilix-team/iohook/blob/master/src/iohook.cc
@@ -12,9 +15,12 @@
 
 namespace iohook {
 
-static napi_async_work workIoHook;
-static napi_threadsafe_function tsfnIoHook;
-static bool isRunning;
+struct HookWork {
+	napi_async_work work = nullptr;
+	napi_threadsafe_function tsfn = nullptr;
+};
+
+static std::atomic<HookWork *> activeWork = nullptr;
 
 /**
  * Converts uiohook_event to JS event object.
@@ -89,8 +95,12 @@ static inline Napi::Object convertEvent(Napi::Env env, uiohook_event event) {
 
 // Safe tunnel between the worker and the main thread. Feed this to `napi_create_threadsafe_function`.
 void threadSafeCallback(napi_env env, napi_value js_cb, void *context, void *data) {
-	uiohook_event cppEvent = *(reinterpret_cast<uiohook_event *>(data));
-	Napi::Object jsEvent = convertEvent(env, cppEvent);
+	std::unique_ptr<uiohook_event> cppEvent(reinterpret_cast<uiohook_event *>(data));
+	if (env == nullptr || js_cb == nullptr) {
+		return;
+	}
+
+	Napi::Object jsEvent = convertEvent(env, *cppEvent);
 
 	napi_status status;
 
@@ -110,29 +120,31 @@ void threadSafeCallback(napi_env env, napi_value js_cb, void *context, void *dat
 
 // Call this from UIOHOOK handler to trigger JS callback
 void callTsFn(void *data) {
-	// Call the thread safe function, that can call JS callback to push data to JS
-	napi_status status = napi_call_threadsafe_function(tsfnIoHook, data, napi_tsfn_blocking);
+	HookWork *work = activeWork.load();
+	if (work == nullptr) {
+		delete reinterpret_cast<uiohook_event *>(data);
+		return;
+	}
+
+	napi_status status = napi_call_threadsafe_function(work->tsfn, data, napi_tsfn_blocking);
 	if (status != napi_ok) {
 		printf("Failed to call the Threadsafe Function.");
+		delete reinterpret_cast<uiohook_event *>(data);
 	}
 }
 
 // This function runs on a worker thread. Calls JS through `callTsFn` (inside `iohookThreadWorker`).
 static void executeWork(napi_env env, void *data) {
-	napi_status status;
-
-	// Acquire TSFN once for the whole duration - nobody else needs it
-	status = napi_acquire_threadsafe_function(tsfnIoHook);
-	if (status != napi_ok) {
-		printf("Failed to acquire the Threadsafe Function.");
-		return;
-	}
+	HookWork *work = static_cast<HookWork *>(data);
 
 	// This will run (blocking) until `hookStop` called
 	iohookThreadWorker();
 
-	// No further use of TSFN.
-	status = napi_release_threadsafe_function(tsfnIoHook, napi_tsfn_release);
+	HookWork *expectedWork = work;
+	activeWork.compare_exchange_strong(expectedWork, nullptr);
+
+	// No further use of TSFN. Its finalizer owns the work context.
+	napi_status status = napi_release_threadsafe_function(work->tsfn, napi_tsfn_release);
 	if (status != napi_ok) {
 		printf("Failed to release the Threadsafe Function.");
 	}
@@ -141,12 +153,13 @@ static void executeWork(napi_env env, void *data) {
 
 // This function runs on the main thread after `executeWork` exited.
 static void onWorkComplete(napi_env env, napi_status status, void *data) {
-	isRunning = false;
+	HookWork *work = static_cast<HookWork *>(data);
+	napi_delete_async_work(env, work->work);
+	work->work = nullptr;
+}
 
-	napi_status statusUnref = napi_unref_threadsafe_function(env, tsfnIoHook);
-	if (statusUnref != napi_ok) {
-		printf("Failed to unref the Threadsafe Function.");
-	}
+static void finalizeWork(napi_env env, void *data, void *hint) {
+	delete static_cast<HookWork *>(data);
 }
 
 DBG_EXPORT JS_METHOD(initHook) {
@@ -158,19 +171,26 @@ DBG_EXPORT JS_METHOD(initHook) {
 DBG_EXPORT JS_METHOD(startHook) {
 	NAPI_ENV;
 	REQ_FUN_ARG(0, callback);
+	if (activeWork.load() != nullptr) {
+		Napi::Error::New(env, "iohook is already running").ThrowAsJavaScriptException();
+		RET_UNDEFINED;
+	}
 
 	napi_value work_name = JS_STR("IO Hook Work Item");
+	HookWork *work = new HookWork();
 
 	napi_status status;
 
 	// Create a thread-safe N-API callback function correspond to the C/C++ callback function
 	status = napi_create_threadsafe_function(
-	    env, callback, nullptr, work_name, 0, 1, nullptr, nullptr, nullptr, threadSafeCallback, &tsfnIoHook
+	    env, callback, nullptr, work_name, 0, 1, work, finalizeWork, nullptr, threadSafeCallback, &work->tsfn
 	);
 	if (status != napi_ok) {
 		printf("Failed to create the Threadsafe Function.");
+		delete work;
 		RET_UNDEFINED;
 	}
+	napi_unref_threadsafe_function(env, work->tsfn);
 
 	// Create an async work item, that can be deployed in the node.js event queue
 	status = napi_create_async_work(
@@ -179,30 +199,35 @@ DBG_EXPORT JS_METHOD(startHook) {
 	    work_name,
 	    executeWork,
 	    onWorkComplete,
-	    nullptr,
+	    work,
 	    // OUT: THE handle to the async work item
-	    &workIoHook
+	    &work->work
 	);
 	if (status != napi_ok) {
 		printf("Failed to create the Async Work.");
+		napi_release_threadsafe_function(work->tsfn, napi_tsfn_abort);
 		RET_UNDEFINED;
 	}
+
+	activeWork.store(work);
 
 	// Queue the work item for execution.
-	status = napi_queue_async_work(env, workIoHook);
+	status = napi_queue_async_work(env, work->work);
 	if (status != napi_ok) {
 		printf("Failed to queue the Async Work.");
+		HookWork *expectedWork = work;
+		activeWork.compare_exchange_strong(expectedWork, nullptr);
+		napi_delete_async_work(env, work->work);
+		napi_release_threadsafe_function(work->tsfn, napi_tsfn_abort);
 		RET_UNDEFINED;
 	}
-
-	isRunning = true;
 
 	RET_UNDEFINED;
 }
 
 DBG_EXPORT JS_METHOD(stopHook) {
 	NAPI_ENV;
-	if (isRunning) {
+	if (activeWork.load() != nullptr) {
 		iohookStop();
 	}
 	RET_UNDEFINED;

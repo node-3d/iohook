@@ -15,4 +15,4 @@ Napi::Object initModule(Napi::Env env, Napi::Object exports) {
 }
 
 
-NODE_API_MODULE(webaudio, initModule)
+NODE_API_MODULE(iohook, initModule)
