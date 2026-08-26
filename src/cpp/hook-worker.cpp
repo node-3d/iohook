@@ -1,5 +1,9 @@
 #include <uiohook.h>
 
+#if defined(__APPLE__)
+#include <ApplicationServices/ApplicationServices.h>
+#endif
+
 #include "iohook.hpp"
 #include "hook-worker.hpp"
 
@@ -60,6 +64,14 @@ void iohookInit() {
 	hook_set_logger_proc(&logger_proc);
 	// Set the event callback for uiohook events.
 	hook_set_dispatch_proc(&dispatch_proc);
+}
+
+bool iohookCanStart() {
+#if defined(__APPLE__)
+	return AXIsProcessTrusted() && CGPreflightListenEventAccess();
+#else
+	return true;
+#endif
 }
 
 void iohookThreadWorker() {

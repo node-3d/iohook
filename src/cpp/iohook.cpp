@@ -21,6 +21,7 @@ struct HookWork {
 };
 
 static std::atomic<HookWork *> activeWork = nullptr;
+static bool isInitialized = false;
 
 /**
  * Converts uiohook_event to JS event object.
@@ -164,13 +165,25 @@ static void finalizeWork(napi_env env, void *data, void *hint) {
 
 DBG_EXPORT JS_METHOD(initHook) {
 	NAPI_ENV;
-	iohookInit();
-	RET_UNDEFINED;
+	if (!isInitialized) {
+		iohookInit();
+		isInitialized = true;
+	}
+	RET_BOOL(iohookCanStart());
 }
 
 DBG_EXPORT JS_METHOD(startHook) {
 	NAPI_ENV;
 	REQ_FUN_ARG(0, callback);
+	if (!isInitialized) {
+		Napi::Error::New(env, "iohook must be initialized before it can start").ThrowAsJavaScriptException();
+		RET_UNDEFINED;
+	}
+	if (!iohookCanStart()) {
+		Napi::Error::New(env, "iohook input monitoring permission is not granted")
+		    .ThrowAsJavaScriptException();
+		RET_UNDEFINED;
+	}
 	if (activeWork.load() != nullptr) {
 		Napi::Error::New(env, "iohook is already running").ThrowAsJavaScriptException();
 		RET_UNDEFINED;

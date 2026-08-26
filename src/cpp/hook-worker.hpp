@@ -11,6 +11,7 @@ namespace iohook {
 
 void iohookThreadWorker();
 void iohookInit();
+bool iohookCanStart();
 void iohookStop();
 void iohookDebug(bool value);
 

@@ -54,7 +54,7 @@ export type TNativeHookMessage = {
 };
 
 type TNative = {
-	initHook: () => void;
+	initHook: () => boolean;
 	startHook: (handler: (event: TNativeHookMessage) => void) => void;
 	stopHook: () => void;
 	setDebug: (isDebug: boolean) => void;

@@ -4,6 +4,7 @@ import { iohook } from './index.ts';
 
 const methods = [
 	'start',
+	'init',
 	'stop',
 	'setDebug',
 	'useRawcode',
@@ -22,4 +23,12 @@ describe('iohook', () => {
 			assert.equal(typeof iohook[name], 'function');
 		});
 	}
+
+	it('does not start before explicit initialization', () => {
+		assert.throws(() => iohook.start(), /must be initialized/u);
+	});
+
+	it('initializes without starting global input capture', () => {
+		assert.equal(typeof iohook.init(), 'boolean');
+	});
 });

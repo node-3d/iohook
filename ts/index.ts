@@ -76,9 +76,17 @@ type TPossibleSubscriptions = {
 
 type TIoHookControls = {
 	/**
-	 * Start the hook engine.
+	 * Configure the native hook and report whether this process may start it.
 	 *
-	 * If `enableLogger` is true, the native module prints debug information to stdout.
+	 * On macOS, `false` means Accessibility or Input Monitoring permission is
+	 * unavailable. This method never starts global input capture.
+	 */
+	init: () => boolean;
+	/**
+	 * Start global input capture.
+	 *
+	 * Call {@link init} first. Throws when initialization has not completed or
+	 * the operating system denies input-capture permission.
 	 */
 	start: (enableLogger?: boolean) => void;
 	/**
@@ -131,6 +139,7 @@ type TShortcut = {
 
 type TState = {
 	active: boolean;
+	initialized: boolean;
 	activatedShortcuts: TShortcut[];
 	eventProperty: TKeyboardEventProperty;
 	lastKeydownAlt: boolean;
@@ -154,6 +163,7 @@ const eventNames = {
 
 const state: TState = {
 	active: false,
+	initialized: false,
 	activatedShortcuts: [],
 	eventProperty: 'keycode',
 	lastKeydownAlt: false,
@@ -293,9 +303,18 @@ const createEvent = (message: TNativeHookMessage): THookEvent | null => {
 };
 
 class IoHookController extends EventEmitter {
+	public init(): boolean {
+		const isAvailable = native.initHook();
+		state.initialized = true;
+		return isAvailable;
+	}
+
 	public start(enableLogger = false): void {
 		if (state.active) {
 			return;
+		}
+		if (!state.initialized) {
+			throw new Error('iohook must be initialized before it can start');
 		}
 
 		native.startHook((message) => {
@@ -383,6 +402,3 @@ class IoHookController extends EventEmitter {
 }
 
 export const iohook = new IoHookController() as IoHook;
-
-native.initHook();
-iohook.start();

@@ -27,8 +27,18 @@ iohook.shortcut([29, 65], (keys) => {
 	console.log('Shortcut pressed with keys:', keys);
 });
 
+if (!iohook.init()) {
+	throw new Error('Global input permission is unavailable');
+}
+
 iohook.start();
 ```
+
+Importing the package does not start global input capture. Call `init()` first;
+it returns `false` when the current process cannot capture input (including when
+macOS Accessibility or Input Monitoring permission is unavailable). `start()`
+throws if initialization was skipped or the operating system denies access.
+`stop()` is safe to call when the hook is not running.
 
 > Note: this **addon uses N-API**, and therefore is ABI-compatible across different
 Node.js versions. Addon binaries are precompiled and **there is no compilation**
