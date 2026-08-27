@@ -1,5 +1,9 @@
 import { iohook } from '@node-3d/iohook';
 
+if (!iohook.init()) {
+	throw new Error('Global input permission is unavailable');
+}
+
 iohook.on('mousedown', (msg) => {
 	console.log(msg);
 });
