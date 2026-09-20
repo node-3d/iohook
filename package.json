@@ -47,7 +47,7 @@
 		"url": "git+https://github.com/node-3d/iohook.git"
 	},
 	"dependencies": {
-		"@node-3d/addon-tools": "~10.0.1",
+		"@node-3d/addon-tools": "~10.1.0",
 		"@node-3d/deps-uiohook": "~1.0.0",
 		"@node-3d/segfault": "~4.0.0"
 	},
